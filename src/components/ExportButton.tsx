@@ -40,6 +40,8 @@ interface RepoData {
 export default function ExportButton() {
   const [isCopying, setIsCopying] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [isExportingCSV, setIsExportingCSV] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const fetchData = async () => {
     const fetchOptions: RequestInit = {
@@ -89,7 +91,7 @@ export default function ExportButton() {
       const reposJson = reposRes.ok
         ? await reposRes.json()
         : { repos: [] };
-        console.log("RAW REPOS RESPONSE:", reposJson);
+       
 
       let reposData: RepoData[] = [];
 
@@ -244,33 +246,22 @@ const buildSummary = async () => {
 
   
   const sortedRepos = [...reposData].sort(
-    (a: any, b: any) =>
+  (a, b) =>
       Number(
         b.commits ||
           b.contributions ||
-          b.commitCount ||
-          b.totalCommits ||
-          b.contributionCount ||
-          0
+          b.commitCount 
       ) -
       Number(
         a.commits ||
           a.contributions ||
-          a.commitCount ||
-          a.totalCommits ||
-          a.contributionCount ||
-          0
+          a.commitCount
       )
   );
 
   const topRepo = sortedRepos[0];
 
-  const repoCommits =
-    Number(
-      topRepo?.commits ||
-        topRepo?.contributions ||
-        topRepo?.commitCount 
-    ) || 0;
+  
 
  const currentStreak =
   Number(streakData?.current) || 0;
@@ -308,6 +299,8 @@ Excited to share my latest developer productivity snapshot powered by DevTrack!
     "N/A"
   }
 
+  🎯 Goals Completed: ${completedGoals}/${goalsData.length}
+
 Consistent progress is better than perfect progress.
 
 Looking forward to building more, contributing more, and learning every single day 🚀
@@ -317,23 +310,68 @@ Looking forward to building more, contributing more, and learning every single d
 
   return summary;
 };
-  const copySummary = async () => {
-    setIsCopying(true);
 
-    try {
-      const summary = await buildSummary();
+const downloadFile = (
+  content: string,
+  filename: string,
+  type: string
+) => {
+  const blob = new Blob([content], { type });
 
-      await navigator.clipboard.writeText(summary);
+  const url = URL.createObjectURL(blob);
 
-      alert("Profile summary copied to clipboard!");
-    } catch (error) {
-      console.error(error);
-      alert("Failed to copy summary.");
-    } finally {
-      setIsCopying(false);
-    }
-  };
+  const a = document.createElement("a");
 
+  a.href = url;
+
+  a.download = filename;
+
+  document.body.appendChild(a);
+
+  a.click();
+
+  document.body.removeChild(a);
+
+  URL.revokeObjectURL(url);
+};
+
+const exportCSV = async () => {
+  setIsExportingCSV(true);
+
+  try {
+    const summary = await buildSummary();
+
+    downloadFile(
+      summary,
+      "devtrack-summary.csv",
+      "text/csv"
+    );
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setIsExportingCSV(false);
+  }
+};
+
+ const copySummary = async () => {
+  setIsCopying(true);
+
+  try {
+    const summary = await buildSummary();
+
+    await navigator.clipboard.writeText(summary);
+
+    setCopied(true);
+
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+  } catch (error) {
+    console.error("Failed to copy summary.", error);
+  } finally {
+    setIsCopying(false);
+  }
+};
   const exportPDF = async () => {
   setIsExportingPDF(true);
 
@@ -366,7 +404,7 @@ Looking forward to building more, contributing more, and learning every single d
     const pageHeight =
       doc.internal.pageSize.getHeight();
 
-    // HEADER
+   
     doc.setFillColor(15, 23, 42);
 
     doc.rect(0, 0, pageWidth, 28, "F");
@@ -453,9 +491,8 @@ Looking forward to building more, contributing more, and learning every single d
 
     doc.save("devtrack-profile-summary.pdf");
   } catch (error) {
-    console.error(error);
-
-    alert("Failed to export PDF.");
+   
+    console.error("Failed to export PDF.", error);
   } finally {
     setIsExportingPDF(false);
   }
@@ -464,30 +501,56 @@ Looking forward to building more, contributing more, and learning every single d
     <div className="flex flex-wrap gap-3">
       
       <button
-        type="button"
-        onClick={copySummary}
-        disabled={isCopying}
-        className="px-4 py-2 bg-[var(--control)] border border-[var(--border)] text-[var(--card-foreground)] hover:border-[var(--accent)] rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
-      >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 16h8M8 12h8m-8-4h8M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-          />
-        </svg>
+  type="button"
+  onClick={exportCSV}
+  disabled={isExportingCSV}
+  className="px-4 py-2 bg-[var(--control)] border border-[var(--border)] text-[var(--card-foreground)] hover:border-[var(--accent)] rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+>
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+    />
+  </svg>
 
-        {isCopying
-          ? "Copying..."
-          : "Copy Profile Summary"}
-      </button>
+  {isExportingCSV
+    ? "Exporting..."
+    : "Export CSV"}
+</button>
 
+      <button
+  type="button"
+  onClick={copySummary}
+  disabled={isCopying}
+  className="px-4 py-2 bg-[var(--control)] border border-[var(--border)] text-[var(--card-foreground)] hover:border-[var(--accent)] rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+>
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M8 16h8M8 12h8m-8-4h8M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+    />
+  </svg>
+
+  {isCopying
+    ? "Copying..."
+    : copied
+    ? "Copied!"
+    : "Copy Profile Summary"}
+</button>
     
       <button
         type="button"
