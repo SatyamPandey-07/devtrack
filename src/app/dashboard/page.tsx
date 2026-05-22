@@ -22,6 +22,14 @@ import { authOptions } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import {
+  ACCESS_TOKEN_MAX_AGE,
+  createAccessToken,
+  createRefreshToken,
+  getTokenCookieName,
+  REFRESH_TOKEN_MAX_AGE,
+  USE_SECURE_COOKIES,
+} from "@/lib/auth-tokens";
 
 export default async function DashboardPage() {
   const allowPlaywrightBypass =
@@ -30,6 +38,37 @@ export default async function DashboardPage() {
   const session = allowPlaywrightBypass
     ? null
     : await getServerSession(authOptions);
+
+  if (session?.githubId && session?.githubLogin) {
+    const cookieStore = cookies();
+    const accessToken = createAccessToken({
+      githubId: session.githubId,
+      githubLogin: session.githubLogin,
+    });
+    const refreshToken = createRefreshToken({
+      githubId: session.githubId,
+      githubLogin: session.githubLogin,
+    });
+
+    cookieStore.set({
+      name: getTokenCookieName("access"),
+      value: accessToken,
+      httpOnly: true,
+      sameSite: "lax",
+      secure: USE_SECURE_COOKIES,
+      path: "/",
+      maxAge: ACCESS_TOKEN_MAX_AGE,
+    });
+    cookieStore.set({
+      name: getTokenCookieName("refresh"),
+      value: refreshToken,
+      httpOnly: true,
+      sameSite: "lax",
+      secure: USE_SECURE_COOKIES,
+      path: "/",
+      maxAge: REFRESH_TOKEN_MAX_AGE,
+    });
+  }
 
   if (!session && !allowPlaywrightBypass) {
     redirect("/");

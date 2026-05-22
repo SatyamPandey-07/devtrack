@@ -45,7 +45,7 @@ Developer metrics live in too many places — GitHub activity, PR turnaround, is
 | Layer | Technology |
 |-------|-----------|
 | Framework | [Next.js](https://nextjs.org) (App Router) + TypeScript |
-| Auth | [NextAuth.js](https://next-auth.js.org) — GitHub OAuth |
+| Auth | [NextAuth.js](https://next-auth.js.org) — GitHub OAuth with secure JWT access/refresh token support |
 | Database | [Supabase](https://supabase.com) (PostgreSQL + Row-Level Security) |
 | Charts | [Recharts](https://recharts.org) |
 | Styling | Tailwind CSS with CSS custom properties |
