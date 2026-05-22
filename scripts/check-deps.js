@@ -30,7 +30,7 @@ function collectFiles(dir) {
     if (entry.isDirectory()) {
       if (["node_modules", ".next", "dist", ".git"].includes(entry.name)) continue;
       out.push(...collectFiles(full));
-    } else if (/\.(ts|tsx)$/.test(entry.name)) {
+    } else if (/\.(js|jsx|ts|tsx)$/.test(entry.name)) {
       out.push(full);
     }
   }
@@ -53,10 +53,15 @@ const DYNAMIC_RE = /(?:require|import)\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
 function extractImports(src) {
   const imports = [];
 
+  // Strip single-line and multi-line comments to prevent quotes inside comments from throwing off the regex
+  const cleanSrc = src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*/g, "");
+
   for (const re of [IMPORT_RE, SIDE_EFFECT_IMPORT_RE, DYNAMIC_RE]) {
     re.lastIndex = 0;
     let m;
-    while ((m = re.exec(src)) !== null) {
+    while ((m = re.exec(cleanSrc)) !== null) {
       imports.push(m[1]);
     }
   }
@@ -73,7 +78,14 @@ function collectMissingDeps(files, allDeps, cwd = process.cwd()) {
 
     for (const mod of extractImports(src)) {
       // Skip relative imports, path aliases (@/ is the src alias — not a pkg)
-      if (mod.startsWith(".") || mod.startsWith("/") || mod.startsWith("@/")) continue;
+      const INTERNAL_ALIASES = ["@/", "~/", "src/"];
+      if (
+        mod.startsWith(".") || 
+        mod.startsWith("/") || 
+        INTERNAL_ALIASES.some(alias => mod.startsWith(alias))
+      ) {
+        continue;
+      }
       const pkgName = extractPackageName(mod);
       if (BUILTINS.has(pkgName) || FRAMEWORK_ALIASES.has(pkgName)) continue;
       if (allDeps.has(pkgName)) continue;
@@ -87,14 +99,17 @@ function collectMissingDeps(files, allDeps, cwd = process.cwd()) {
 }
 
 function main() {
-  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  const pkgPath = path.resolve(__dirname, "../package.json");
+  const srcDir = path.resolve(__dirname, "../src");
+
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
   const allDeps = new Set([
     ...Object.keys(pkg.dependencies || {}),
     ...Object.keys(pkg.devDependencies || {}),
   ]);
 
-  const files = collectFiles("src");
-  const missing = collectMissingDeps(files, allDeps);
+  const files = collectFiles(srcDir);
+  const missing = collectMissingDeps(files, allDeps, path.resolve(__dirname, ".."));
 
   if (missing.size > 0) {
     console.error("\n❌  Imports found with no matching entry in package.json:\n");
