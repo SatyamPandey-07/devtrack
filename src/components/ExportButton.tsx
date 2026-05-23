@@ -269,6 +269,17 @@ export default function ExportButton() {
   const { data: session } = useSession();
   const [isExportingCSV, setIsExportingCSV] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [notification, setNotification] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const showNotification = (type: "success" | "error", message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => {
+      setNotification((curr) => (curr?.message === message ? null : curr));
+    }, 5000);
+  };
 
   const reportName = useMemo(
     () => session?.githubLogin ?? session?.user?.name ?? "",
@@ -285,6 +296,10 @@ export default function ExportButton() {
       fetch(`/api/goals`, fetchOptions),
       fetch(`/api/metrics/contributions?days=365`, fetchOptions),
     ]);
+
+    if (!prRes.ok && !goalsRes.ok && !contribRes.ok) {
+      throw new Error("Failed to fetch dashboard metrics. Please check your connection.");
+    }
 
     const prData: PRData | null = prRes.ok ? await prRes.json() : null;
     const goalsData = goalsRes.ok ? await goalsRes.json() : { goals: [] };
@@ -313,6 +328,11 @@ export default function ExportButton() {
     setIsExportingCSV(true);
     try {
       const { prData, goalsData, contribData } = await fetchData();
+
+      if (!prData && (!goalsData || goalsData.length === 0) && (!contribData || contribData.length === 0)) {
+        throw new Error("No data available to export.");
+      }
+
       const generatedAt = formatGeneratedTimestamp();
       const totalCommits = getTotalCommits(contribData);
       const activeDays = getActiveDays(contribData);
@@ -396,6 +416,11 @@ export default function ExportButton() {
       ]);
 
       downloadFile(csv, "dashboard-metrics.csv", "text/csv");
+      showNotification("success", "Metrics exported successfully to CSV!");
+    } catch (error) {
+      console.error("Export CSV failed:", error);
+      const msg = error instanceof Error ? error.message : "Failed to export CSV. Please try again.";
+      showNotification("error", msg);
     } finally {
       setIsExportingCSV(false);
     }
@@ -405,6 +430,13 @@ export default function ExportButton() {
     setIsExportingPDF(true);
     try {
       const { prData, goalsData, contribData } = await fetchData();
+
+      const goalsList = (Array.isArray(goalsData) ? goalsData : (goalsData as any)?.goals ?? []) as Goal[];
+
+      if (!prData && (!goalsList || goalsList.length === 0) && (!contribData || contribData.length === 0)) {
+        throw new Error("No data available to export.");
+      }
+
       const doc = new jsPDF();
       const generatedAt = formatGeneratedTimestamp();
       const totalCommits = getTotalCommits(contribData);
@@ -650,6 +682,11 @@ export default function ExportButton() {
       addFooter(doc, generatedAt);
 
       doc.save("dashboard-metrics.pdf");
+      showNotification("success", "Metrics exported successfully to PDF!");
+    } catch (error) {
+      console.error("Export PDF failed:", error);
+      const msg = error instanceof Error ? error.message : "Failed to export PDF. Please try again.";
+      showNotification("error", msg);
     } finally {
       setIsExportingPDF(false);
     }
@@ -680,6 +717,37 @@ export default function ExportButton() {
         </svg>
         {isExportingPDF ? "Exporting..." : "Export PDF"}
       </button>
+
+      {notification && (
+        <div
+          role="alert"
+          className={`toast-animate fixed bottom-5 right-5 z-[9999] flex items-center gap-3 rounded-lg border p-4 shadow-lg ${
+            notification.type === "success"
+              ? "border-[var(--success)]/30 bg-[var(--card)] text-[var(--success)]"
+              : "border-[var(--destructive)]/30 bg-[var(--card)] text-[var(--destructive)]"
+          }`}
+        >
+          {notification.type === "success" ? (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          )}
+          <span className="text-sm font-medium text-[var(--foreground)]">{notification.message}</span>
+          <button
+            onClick={() => setNotification(null)}
+            className="ml-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+            aria-label="Close notification"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

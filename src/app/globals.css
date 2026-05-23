@@ -60,3 +60,19 @@ body {
 .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
 .dark .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--muted-foreground); }
 .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+@keyframes toastFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(1rem) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.toast-animate {
+  animation: toastFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
