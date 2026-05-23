@@ -20,9 +20,11 @@ import Link from "next/link";
 import PersonalRecords from "@/components/PersonalRecords";
 import LocalCodingTime from "@/components/LocalCodingTime";
 import RecentActivity from "@/components/RecentActivity";
+
 import { authOptions } from "@/lib/auth";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+
 import {
   ACCESS_TOKEN_MAX_AGE,
   createAccessToken,
@@ -32,21 +34,23 @@ import {
   USE_SECURE_COOKIES,
 } from "@/lib/auth-tokens";
 
-export default async function DashboardPage() {
-<<<<<<< HEAD
-  const allowPlaywrightBypass =
-    process.env.PLAYWRIGHT_AUTH_BYPASS === "1" &&
-    cookies().get("playwright-dashboard-auth")?.value === "1";
-  const session = allowPlaywrightBypass
-    ? null
-    : await getServerSession(authOptions);
+import { cookies } from "next/headers";
 
-  if (session?.githubId && session?.githubLogin) {
+export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect("/");
+  }
+
+  if (session.githubId && session.githubLogin) {
     const cookieStore = cookies();
+
     const accessToken = createAccessToken({
       githubId: session.githubId,
       githubLogin: session.githubLogin,
     });
+
     const refreshToken = createRefreshToken({
       githubId: session.githubId,
       githubLogin: session.githubLogin,
@@ -61,6 +65,7 @@ export default async function DashboardPage() {
       path: "/",
       maxAge: ACCESS_TOKEN_MAX_AGE,
     });
+
     cookieStore.set({
       name: getTokenCookieName("refresh"),
       value: refreshToken,
@@ -72,17 +77,10 @@ export default async function DashboardPage() {
     });
   }
 
-  if (!session && !allowPlaywrightBypass) {
-    redirect("/");
-  }
-=======
-  const session = await getServerSession(authOptions);
-  if (!session) redirect("/");
->>>>>>> 2d78d3134d63a440febb87bd49cc261c288d54e5
-
   return (
     <div className="min-h-screen bg-[var(--background)] p-4 md:p-8 text-[var(--foreground)] transition-colors">
       <DashboardHeader />
+
       <div className="mb-6 flex justify-end items-center gap-2">
         <Link
           href="/dashboard/settings"
@@ -90,8 +88,10 @@ export default async function DashboardPage() {
         >
           Settings
         </Link>
+
         <ExportButton />
       </div>
+
       <StreakAtRiskBanner />
 
       <div className="mb-6">
@@ -102,13 +102,15 @@ export default async function DashboardPage() {
         <PersonalRecords />
       </div>
 
-      {/* Row 1: Contribution graph + Streak + Local Coding Time */}
+      {/* Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <ContributionGraph />
+
           <div className="mt-6">
             <ContributionHeatmap />
           </div>
+
           <div className="mt-6">
             <FriendComparison />
           </div>
@@ -120,7 +122,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Row 2: PR metrics, PR breakdown & Time Chart */}
+      {/* Row 2 */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <PRMetrics />
         <PRBreakdownChart />
@@ -131,30 +133,32 @@ export default async function DashboardPage() {
         <PRReviewTrendChart />
       </div>
 
-      {/* Row 3: Issue metrics + CI analytics */}
+      {/* Row 3 */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <IssueMetrics />
         </div>
+
         <CIAnalytics />
       </div>
 
-      {/* Row 4: Pinned repositories */}
+      {/* Row 4 */}
       <div className="mt-6">
         <PinnedRepos />
       </div>
 
-      {/* Row 5: Top repos + Language breakdown + Goal tracker */}
+      {/* Row 5 */}
       <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <TopRepos />
         <LanguageBreakdown />
         <GoalTracker />
       </div>
 
-      {/* Row 6: Recent GitHub activity */}
+      {/* Row 6 */}
       <div className="mt-6">
         <RecentActivity />
       </div>
     </div>
   );
 }
+
