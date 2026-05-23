@@ -105,7 +105,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noreferrer"
               >
-                  Email
+                Email
               </a>
             </div>
           </div>
