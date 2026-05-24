@@ -96,16 +96,10 @@ export default function GoalTracker() {
       if (!res.ok) {
         setGoals(previousGoals);
         setDeleteError("Failed to delete goal. Please try again.");
-        setTimeout(() => {
-          setDeleteError(null);
-        }, 5000);
       }
     } catch {
       setGoals(previousGoals);
-      setDeleteError("Failed to delete goal. Please try again.");
-      setTimeout(() => {
-        setDeleteError(null);
-      }, 5000);
+      setDeleteError("Failed to delete goal. Please check your connection.");
     } finally {
       setDeletingId(null);
     }
@@ -184,22 +178,9 @@ export default function GoalTracker() {
       <h2 className="mb-4 text-lg font-semibold text-[var(--card-foreground)]">Weekly Goals</h2>
 
       {deleteError && (
-        <div
-          role="alert"
-          className="mb-4 rounded-lg border border-[var(--destructive)]/30 bg-[var(--destructive)]/10 p-3 text-xs text-[var(--destructive)] flex items-center justify-between animate-in fade-in duration-200"
-        >
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span>{deleteError}</span>
-          </div>
-          <button
-            onClick={() => setDeleteError(null)}
-            className="text-[var(--destructive)] hover:opacity-80 font-semibold text-xs ml-2"
-          >
-            Dismiss
-          </button>
+        <div className="mb-4 rounded-lg border border-[var(--destructive)]/20 bg-[var(--destructive)]/10 p-3 text-sm text-[var(--destructive)] flex justify-between items-center">
+          <p>{deleteError}</p>
+          <button onClick={() => setDeleteError(null)} className="text-[var(--destructive)] hover:opacity-80 ml-2" aria-label="Dismiss error">✕</button>
         </div>
       )}
 
@@ -234,7 +215,7 @@ export default function GoalTracker() {
                       )}
                     </div>
                     {completed && (
-                      <span className="text-xs font-medium text-[var(--success)]">
+                      <span className="text-xs font-medium text-emerald-500">
                         {completionLabel}
                       </span>
                     )}
@@ -245,13 +226,45 @@ export default function GoalTracker() {
                       {goal.current}/{goal.target} {goal.unit}
                     </span>
 
+                    <button
+  onClick={async () => {
+    const newCurrent = goal.current + 1;
+
+    if (newCurrent > goal.target) return;
+
+    const res = await fetch(`/api/goals/${goal.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        current: newCurrent,
+      }),
+    });
+
+    if (res.ok) {
+      setGoals((prevGoals) =>
+        prevGoals.map((g) =>
+          g.id === goal.id
+            ? { ...g, current: newCurrent }
+            : g
+        )
+      );
+    }
+  }}
+  disabled={goal.current >= goal.target}
+  className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+>
+  +1
+</button>
+
                     {isConfirming ? (
                       <span className="flex items-center gap-1 text-xs">
                         <span className="text-[var(--muted-foreground)]">Delete?</span>
                         <button
                           onClick={() => handleDelete(goal.id)}
                           disabled={isDeleting}
-                          className="text-[var(--destructive)] hover:text-[var(--destructive)] font-semibold transition-colors disabled:opacity-50"
+                          className="text-[var(--destructive)] hover:opacity-80 font-semibold transition-colors disabled:opacity-50"
                           aria-label={`Confirm delete goal: ${goal.title}`}
                         >
                           Yes
@@ -283,7 +296,7 @@ export default function GoalTracker() {
 
                 <div className="h-2 overflow-hidden rounded-full bg-[var(--control)]">
                   <div
-                    className={`h-full rounded-full transition-all ${completed ? "bg-[var(--success)]" : "bg-[var(--accent)]"}`}
+                    className={`h-full rounded-full transition-all ${completed ? "bg-emerald-500" : "bg-[var(--accent)]"}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
